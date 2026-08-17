@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas import StudentCreate, StudentUpdate,StudentResponse
 import crud
-
+from models import User
+from security import get_current_user
 
 router = APIRouter(
     prefix="/students",  #  now we don't have to repeatedly write /students.
@@ -17,7 +18,8 @@ router = APIRouter(
 @router.post("/", response_model=StudentResponse)
 def create_student(
     student: StudentCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user) # with this, authentication will be handled automatically for this endpoint.
 ):
 
     return crud.create_student(db, student)
@@ -26,7 +28,8 @@ def create_student(
 # READ ALL
 @router.get("/", response_model=list[StudentResponse])  # list used here because we are returning a list of students. response_model is used to tell FastAPI what the response should look like.
 def get_students(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user) # this will ensure  AUTHENTICATION on every request to this endpoint.
 ):
 
     return crud.get_students(db)
@@ -36,7 +39,8 @@ def get_students(
 @router.get("/{student_id}", response_model=StudentResponse)
 def get_student(
     student_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     student = crud.get_student(
@@ -58,7 +62,8 @@ def get_student(
 def update_student(
     student_id: int,
     student_data: StudentUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     student = crud.update_student(
@@ -80,7 +85,8 @@ def update_student(
 @router.delete("/{student_id}")
 def delete_student(
     student_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     student = crud.delete_student(
@@ -97,3 +103,26 @@ def delete_student(
     return {
         "message": "Student deleted successfully"
     }
+
+# COMPLETE FLOW
+# GET /students
+#      ↓
+# get_current_user()
+#      ↓
+# Extract JWT
+#      ↓
+# Verify JWT
+#      ↓
+# Find User
+#      ↓
+# Authentication successful?
+#      │
+#      ├── NO → 401
+#      │
+#      └── YES
+#           ↓
+#         Router
+#           ↓
+#         CRUD
+#           ↓
+#        Database

@@ -4,10 +4,18 @@ from datetime import datetime, timedelta, timezone
 import dotenv
 import jwt
 from jwt.exceptions import InvalidTokenError
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
 
 from pwdlib import PasswordHash
 import os
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
+from starlette import status
+
+from database import get_db
+from models import User
+from pwdlib import PasswordHash
 
 # ---------------------------------------------------------
 # JWT CONFIGURATION
@@ -41,6 +49,17 @@ def verify_password(plain_password: str,hashed_password: str) -> bool:  # the pa
         hashed_password
     )
 
+# ---------------------------------------------------------
+# OAUTH2 SCHEME
+# ---------------------------------------------------------
+
+# FastAPI will look for:
+# Authorization: Bearer <token>
+# tokenUrl tells Swagger where users can obtain a token.
+# oauth2_scheme's main job here is to extract the bearer token from the request.
+oauth2_scheme = OAuth2PasswordBearer(  # this is a dependency that will be used in the endpoints that require authentication. It will extract the token from the authorization header and validate it. if the token is valid , it will return username else error. tokenUrl is the endpoint where users can obtain the token
+    tokenUrl="/auth/login"
+)
 
 # ---------------------------------------------------------
 # JWT CREATION
@@ -81,3 +100,52 @@ def create_access_token(
     )
 
     return encoded_jwt
+
+# ---------------------------------------------------------
+# GET CURRENT USER
+# ---------------------------------------------------------
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme), # fastAPI automatically extract the token and pass to function
+    db: Session = Depends(get_db)
+):
+    # Error returned when the token is invalid
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={
+            "WWW-Authenticate": "Bearer"
+        }
+    )
+    # now we will decode the token using the same algo which was used when hashing for the first time and try to match it from db
+    try:
+        payload = jwt.decode( 
+            token,
+            SECRET_KEY,
+            algorithms = [ALGORITHM]
+        )
+
+         # Extract username from "sub"
+        username = payload.get("sub")
+
+        # Token must contain a subject
+        if username is None:
+            raise credentials_exception
+
+    except InvalidTokenError:           # here InvalidTokenError is a built-in exception that is raised when token is invalid
+
+        # Token is invalid, expired, malformed, etc.
+        raise credentials_exception
+
+    # Find user in database
+    user = (
+        db.query(User)
+        .filter(User.username == username)
+        .first()
+    )
+
+    # User must exist
+    if user is None:
+        raise credentials_exception
+
+    return user
