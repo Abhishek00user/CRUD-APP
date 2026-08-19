@@ -1,4 +1,17 @@
 from pydantic import BaseModel
+from enum import Enum
+# -------------------- ROLE --------------------
+
+class Role(str, Enum):
+    ADMIN = "admin"
+    TEACHER = "teacher"
+    STUDENT = "student"
+
+# Schema used when an admin changes a user's role
+class UserRoleUpdate(BaseModel):
+    role:Role
+    
+# -------------------- STUDENT SCHEMAS--------------------
 class StudentCreate(BaseModel):
     name:str
     age:int
@@ -25,15 +38,16 @@ class StudentResponse(BaseModel):
 class UserCreate(BaseModel):
     username: str
     password: str
-
+#Role should not be supplied by the client , new users will autmatically become student
 
 # Data returned to the client 
 # Notice that password is NOT included
 class UserResponse(BaseModel):
     id: int
     username: str
+    role: str
 
-    class Config:
+    class Config:   # allows pydantic to read data from SQLAlchemy objects
         from_attributes = True
 
 

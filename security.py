@@ -149,3 +149,35 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+# defining a function for verifying role
+def require_roles(allowed_roles : list[str]):   # multiple roles for one person as admins and teachers both should be able to delete
+
+    def role_checker(
+        current_user: User = Depends(get_current_user)
+    ):
+        # if role of the user in database does not match with the role that cliend is specifying then error
+        if current_user.role not in allowed_roles:
+
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions"
+            )
+
+        return current_user
+
+    return role_checker
+
+# Request
+#    ↓
+# require_role("admin")
+#    ↓
+# get_current_user()
+#    ↓
+# Decode JWT
+#    ↓
+# Find user
+#    ↓
+# Check role
+#    ↓
+# role == "admin" ?

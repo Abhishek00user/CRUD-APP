@@ -2,7 +2,7 @@
 # this doesn't contain any fastAPI code or exceptions, just the operation logic
 from sqlalchemy.orm import Session
 
-from models import Student
+from models import Student,User
 from schemas import StudentCreate, StudentUpdate
 
 
@@ -73,3 +73,30 @@ def delete_student(db: Session, student_id: int):
     db.commit()
 
     return student
+
+def update_user_role(
+        db: Session,
+        user_id: int,
+        role: str
+):
+     # Find the user
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
+    )
+
+    # User doesn't exist
+    if user is None:
+        return None
+
+    # Change the user's role
+    user.role = role
+
+    # Save the change
+    db.commit()
+
+    # Refresh the object
+    db.refresh(user)
+
+    return user

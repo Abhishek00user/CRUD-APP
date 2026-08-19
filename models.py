@@ -17,3 +17,6 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)  # here index is used to create an index on the id column for faster lookups
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)  # never store the actual password
+
+    # User's role
+    role = Column(String, default = "student")
